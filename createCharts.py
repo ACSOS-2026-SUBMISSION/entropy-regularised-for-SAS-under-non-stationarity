@@ -145,7 +145,7 @@ def surpriseChart(df):
         x=df["timestep"],
         y=df["surprisemis"],
         mode="lines",
-        name="Mean MIS",
+        name="Mean MIP",
         line=dict(width=1),
         opacity=0.5,
     ))
@@ -169,7 +169,7 @@ def surpriseChart(df):
         x=df["timestep"],
         y=s_mis_smooth,
         mode="lines",
-        name="Mean MIS (Smoothed)",
+        name="Mean MIP (Smoothed)",
         line=dict(width=2),
     ))
 
@@ -181,8 +181,8 @@ def surpriseChart(df):
     )
     return fig
 
-# Skip this many initial surprise rows so MIS cold-start (first 2*lookback) does not skew normalisation
-MIS_WARMUP_ROWS = 2 * 5  # 2 * lookback (Java default lookback=5)
+# Skip this many initial surprise rows so MIP cold-start (first 2*lookback) does not skew normalisation
+MIP_WARMUP_ROWS = 2 * 5  # 2 * lookback (Java default lookback=5)
 
 # Window size for moving average smoothing
 SMOOTHING_WINDOW = 5  # Window size for moving average smoothing
@@ -203,8 +203,8 @@ def smooth_series(series, window_size):
 
 def surpriseChartNormalized(df):
     """Surprise measures standardised (z-score) for comparison: each has mean 0 and std 1.
-    Skips the first 2*lookback rows so MIS cold-start does not skew the standardisation."""
-    df = df.iloc[MIS_WARMUP_ROWS:].reset_index(drop=True)
+    Skips the first 2*lookback rows so MIP cold-start does not skew the standardisation."""
+    df = df.iloc[MIP_WARMUP_ROWS:].reset_index(drop=True)
     if df.empty:
         return go.Figure()
     s_bf = df["surprisebf"]
@@ -249,7 +249,7 @@ def surpriseChartNormalized(df):
         x=df["timestep"],
         y=std_mis,
         mode="lines",
-        name="Mean MIS",
+        name="Mean MIP",
         line=dict(width=1),
         opacity=0.5,
     ))
@@ -273,7 +273,7 @@ def surpriseChartNormalized(df):
         x=df["timestep"],
         y=std_mis_smooth,
         mode="lines",
-        name="Mean MIS (Smoothed)",
+        name="Mean MIP (Smoothed)",
         line=dict(width=2),
     ))
     y_min = min(std_bf.min(), std_cc.min(), std_mis.min())
@@ -310,7 +310,7 @@ def misChart(df):
             x=df["timestep"],
             y=df["surprisemis"],
             mode="lines",
-            name="System Mean MIS",
+            name="System Mean MIP",
         )
     )
 
@@ -318,7 +318,7 @@ def misChart(df):
         x=df["timestep"],
         y=df["mis_upper"],
         mode="lines",
-        name="MIS Upper Bound",
+        name="MIP Upper Bound",
         line=dict(color='red',
                   width=1),
     ))
@@ -327,15 +327,15 @@ def misChart(df):
         x=df["timestep"],
         y=df["mis_lower"],
         mode="lines",
-        name="MIS Lower Bound",
+        name="MIP Lower Bound",
         line=dict(color='red',
                   width=1),
     ))
 
     fig.update_layout(
-        title="Mean MIS Over Time with Error Bounds",
+        title="Mean MIP Over Time with Error Bounds",
         xaxis_title="Timestep",
-        yaxis_title="Mean MIS",
+        yaxis_title="Mean MIP",
     )
     return fig
 
@@ -1263,9 +1263,9 @@ def createCharts(df, mec_threshold=20.0, rpl_threshold=0.2):
     Build and display all main charts. mec_threshold and rpl_threshold should match
     the config used for the run (solver.config mecThreshold, rplThreshold).
     """
-    logger.info("Stage: Starting main chart generation (MEC/RPL, surprise, gamma, MIS)")
-    # 1. Linechart for mean MIS over time (with error bounds)
-    logger.info("Stage: Building MIS chart (mean MIS over time with bounds)")
+    logger.info("Stage: Starting main chart generation (MEC/RPL, surprise, gamma, MIP)")
+    # 1. Linechart for mean MIP over time (with error bounds)
+    logger.info("Stage: Building MIP chart (mean MIP over time with bounds)")
     mis_fig = misChart(df)
     mis_fig.show()
 
@@ -1274,7 +1274,7 @@ def createCharts(df, mec_threshold=20.0, rpl_threshold=0.2):
     gamma_fig = gammaChart(df)
     gamma_fig.show()
 
-    logger.info("Stage: Building surprise chart (BF, CC, MIS over time)")
+    logger.info("Stage: Building surprise chart (BF, CC, MIP over time)")
     surprises_fig = surpriseChart(df)
     surprises_fig.show()
 

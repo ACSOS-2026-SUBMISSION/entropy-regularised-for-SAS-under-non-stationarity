@@ -10,7 +10,7 @@ This guide provides step-by-step instructions to reproduce every result in the p
 
 | Paper result | Ablation | Key varied factor | Fixed parameters |
 |---|---|---|---|
-| Table III (MIP vs. baselines, Pc=0.25) | `abl2_pc` at level 0.25 | Surprise measure (MIS/CC/BF/none) | lambda=1.0, lookback=4, mecThreshold=20, rplThreshold=0.2 |
+| Table III (MIP vs. baselines, Pc=0.25) | `abl2_pc` at level 0.25 | Surprise measure (MIP/CC/BF/none) | lambda=1.0, lookback=4, mecThreshold=20, rplThreshold=0.2 |
 | Table IV (dual link failure) | `abl5_disaster`, scenario `fail100_12-7_12-3` | Surprise measure | lambda=1.0, p_c=0.5, lookback=4, mecThreshold=20, rplThreshold=0.2 |
 | Table V (lambda ablation) | `abl1_lambda` | lambda ∈ {0.0,0.1,0.5,1.0,2.0,5.0,20.0} | p_c=0.5, lookback=4, mecThreshold=20, rplThreshold=0.2 |
 | Table VI (NFR tightening, level 17/0.17) | `abl4_nfr` at level (17,0.17) | NFR threshold pair | lambda=1.0, p_c=0.5, lookback=4 |
@@ -27,7 +27,7 @@ The simplest way to reproduce everything is to run all ablations together:
 python scripts/run_ablation.py run
 ```
 
-This runs every ablation family (lambda, p_c, lookback, NFR, disaster), all four surprise variants (MIS, CC, BF, no_surprise), all three seeds. It skips any configuration that already has valid output, so it is safe to resume after interruption.
+This runs every ablation family (lambda, p_c, lookback, NFR, disaster), all four surprise variants (MIP, CC, BF, no_surprise), all three seeds. It skips any configuration that already has valid output, so it is safe to resume after interruption.
 
 Optional flags:
 ```bash
@@ -50,7 +50,7 @@ After all runs complete, summary CSVs are written to `output_dir/results/summary
 
 ## Table III — MIP vs. Deviation Signals (Pc = 0.25)
 
-**What the table shows:** Mean and distributional MEC/RPL statistics for ERPerseus paired with each surprise measure (MIS, CC, BF, none) at Pc=0.25, mecThreshold=20, rplThreshold=0.2.
+**What the table shows:** Mean and distributional MEC/RPL statistics for ERPerseus paired with each surprise measure (MIP, CC, BF, none) at Pc=0.25, mecThreshold=20, rplThreshold=0.2.
 
 **Ablation:** `abl2_pc`, level `0.25`
 
@@ -63,7 +63,7 @@ lookback                = 4
 mecThreshold            = 20
 rplThreshold            = 0.2
 runSeed                 = 222, 223, 224 (one run each)
-surpriseMeasureForGamma = MIS / CC / BF / (useSurpriseUpdating=false)
+surpriseMeasureForGamma = MIP / CC / BF / (useSurpriseUpdating=false)
 ```
 
 **Run:**
@@ -77,7 +77,7 @@ python scripts/run_ablation.py run --ablations abl2_pc
 Filter to `level = 0.25`. The four rows (one per surprise value) map to the four method columns in Table III.
 
 **Verify against Table III:**
-- MIS row: `mean_MEC` ≈ 18.809, `median_MEC` ≈ 19.293
+- MIP row: `mean_MEC` ≈ 18.809, `median_MEC` ≈ 19.293
 - CC row: `mean_MEC` ≈ 19.823, `median_MEC` ≈ 20.429 (exceeds 20 C threshold)
 - BF row: `mean_MEC` ≈ 19.992, `median_MEC` ≈ 20.484
 - None row: `mean_MEC` ≈ 18.850, `median_MEC` ≈ 19.423
@@ -161,7 +161,7 @@ python scripts/run_ablation.py run --ablations abl4_nfr
 Filter to `level = (17, 0.17)`.
 
 **Verify against Table VI:**
-- MIS: `mean_MEC` ≈ 16.302, `mean_RPL` ≈ 14.587 — both within the tightened thresholds (conjunctive satisfaction achieved).
+- MIP: `mean_MEC` ≈ 16.302, `mean_RPL` ≈ 14.587 — both within the tightened thresholds (conjunctive satisfaction achieved).
 - CC: `median_MEC` ≈ 20.103 — exceeds threshold; conjunctive satisfaction not achieved.
 - BF and None: similarly non-compliant.
 
@@ -179,9 +179,9 @@ python scripts/run_ablation.py run --ablations abl4_nfr
 python scripts/run_ablation.py run --ablations abl5_disaster
 ```
 
-To limit to specific surprise measures (e.g. MIS and CC only):
+To limit to specific surprise measures (e.g. MIP and CC only):
 ```bash
-python scripts/run_ablation.py run --ablations abl2_pc --surprise MIS CC
+python scripts/run_ablation.py run --ablations abl2_pc --surprise MIP CC
 ```
 
 ---
@@ -192,7 +192,7 @@ After any run completes, generate charts for that specific output directory:
 
 ```bash
 python createCharts.py \
-  --output-dir output_dir/results/abl2_pc/MIS/pc0.25_seed222 \
+  --output-dir output_dir/results/abl2_pc/MIP/pc0.25_seed222 \
   --mec-threshold 20 \
   --rpl-threshold 0.2
 ```
@@ -207,9 +207,9 @@ Use the `mecThreshold` and `rplThreshold` values that match the config used for 
 |---|---|---|
 | `MECSattimestep.txt` | Two columns: `timestep value` | Column 2 mean = mean_MEC for that run |
 | `RPLSattimestep.txt` | Two columns: `timestep value` | Column 2 mean = mean_RPL for that run |
-| `MISBounds.txt` | Three columns: `timestep lower upper` | Theorem 1 confidence interval; used in MIP bounds figure |
+| `MIPBounds.txt` | Three columns: `timestep lower upper` | Theorem 1 confidence interval; used in MIP bounds figure |
 | `gamma.txt` | One column per mote, one row per timestep | SMiLe mixing factor time series |
-| `surpriseMIS.txt` | Same shape as gamma.txt | MIP surprise value time series |
+| `surpriseMIP.txt` | Same shape as gamma.txt | MIP surprise value time series |
 | `summary_*_avg.csv` | One row per (level, surprise); averaged across 3 seeds | Primary input for all paper tables |
 
 ---
@@ -218,7 +218,7 @@ Use the `mecThreshold` and `rplThreshold` values that match the config used for 
 
 To verify the code runs end-to-end without running full ablations:
 
-1. Edit `src/solver.config`: set `algorithmType=erperseus`, `lambda=1.0`, `surpriseMeasureForGamma=MIS`, `runSeed=222`, `mecThreshold=20`, `rplThreshold=0.2`, `useSurpriseUpdating=true`.
+1. Edit `src/solver.config`: set `algorithmType=erperseus`, `lambda=1.0`, `surpriseMeasureForGamma=MIP`, `runSeed=222`, `mecThreshold=20`, `rplThreshold=0.2`, `useSurpriseUpdating=true`.
 2. Run:
    ```bash
    java -cp ".:bin:libraries/*" main.SolvePOMDP

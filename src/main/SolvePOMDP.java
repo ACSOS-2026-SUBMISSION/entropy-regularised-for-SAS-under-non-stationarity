@@ -70,7 +70,7 @@ public class SolvePOMDP {
 	
 	/** Optional experiment parameters (from solver.config): run seed, surprise measure, p_c, useSurpriseUpdating, lookback. Used for reproducible runs and paper experiments. */
 	private int runSeed = 222;
-	private String surpriseMeasureForGamma = "MIS";
+	private String surpriseMeasureForGamma = "MIP";
 	private double p_c = 0.5;
 	private boolean useSurpriseUpdating = true;
 	private int lookback = 5;
@@ -324,10 +324,10 @@ public class SolvePOMDP {
 
 		// Optional experiment parameters (for reproducible runs and paper experiments)
 		this.runSeed = Integer.parseInt(getProperty(properties, "runSeed", "222"));
-		this.surpriseMeasureForGamma = getProperty(properties, "surpriseMeasureForGamma", "MIS");
+		this.surpriseMeasureForGamma = getProperty(properties, "surpriseMeasureForGamma", "MIP");
 		this.p_c = Double.parseDouble(getProperty(properties, "p_c", "0.5"));
-		if (this.surpriseMeasureForGamma != null && !this.surpriseMeasureForGamma.matches("CC|BF|MIS")) {
-			throw new RuntimeException("surpriseMeasureForGamma must be CC, BF, or MIS; got '" + this.surpriseMeasureForGamma + "'");
+		if (this.surpriseMeasureForGamma != null && !this.surpriseMeasureForGamma.matches("CC|BF|MIP")) {
+			throw new RuntimeException("surpriseMeasureForGamma must be CC, BF, or MIP; got '" + this.surpriseMeasureForGamma + "'");
 		}
 		if (this.p_c <= 0 || this.p_c >= 1) {
 			throw new RuntimeException("p_c must be in (0, 1); got " + this.p_c);
@@ -606,8 +606,8 @@ public class SolvePOMDP {
 		deltaConnector.clearFile(new File(outputDir, "gamma.txt").getPath());
 		deltaConnector.clearFile(new File(outputDir, "surpriseBF.txt").getPath());
 		deltaConnector.clearFile(new File(outputDir, "surpriseCC.txt").getPath());
-		deltaConnector.clearFile(new File(outputDir, "surpriseMIS.txt").getPath());
-		deltaConnector.clearFile(new File(outputDir, "MISBounds.txt").getPath());
+		deltaConnector.clearFile(new File(outputDir, "surpriseMIP.txt").getPath());
+		deltaConnector.clearFile(new File(outputDir, "MIPBounds.txt").getPath());
 		deltaConnector.clearMoteMetricsFile(new File(outputDir, "mote_metrics.txt").getPath());
 
 		// Initialize timestepiot to 0. This tracks the run number for QoS retrieval.
@@ -625,7 +625,7 @@ public class SolvePOMDP {
 		noiseInjector.setLinkFailureDuration(400);	
 
 		for (int timestep = 0; timestep < numTimesteps; timestep++) {
-			// Set the static timestep variable to current loop timestep for use in MIS calculation
+			// Set the static timestep variable to current loop timestep for use in MIP calculation
 			iot.DeltaIOTConnector.timestep = timestep;
 			
 			// update failure states if noise injector is enabled

@@ -41,7 +41,7 @@ Experiments are conducted using the DeltaIoT discrete-event simulator under cont
 | `src/main/SolvePOMDP.java` | Entry point. Implements the 500-timestep MAPE-K loop, reads `solver.config`, connects the POMDP solver to the DeltaIoT simulator, and invokes chart generation on completion. |
 | `src/solver/ERPerseus.java` | ERPerseus solver: point-based value iteration with entropy-regularised (softmax) backup at both the observation and action levels, controlled by `lambda`. |
 | `src/solver/Perseus.java` | Baseline Perseus solver: standard point-based value iteration with argmax backup (equivalent to ERPerseus with `lambda=0`). |
-| `src/iot/DeltaIOTConnector.java` | Connects the POMDP to the DeltaIoT simulator. Implements MIP computation (`calculateAndStoreMIS`), the SMiLe belief update rule, and the CC and BF surprise alternatives. |
+| `src/iot/DeltaIOTConnector.java` | Connects the POMDP to the DeltaIoT simulator. Implements MIP computation (`calculateAndStoreMIP`), the SMiLe belief update rule, and the CC and BF surprise alternatives. |
 | `src/pomdp/POMDP.java` | POMDP formalism: states, actions, observations, transition and observation beliefs (Dirichlet pseudo-counts), discount factor. |
 | `src/solver.config` | Master configuration file. Edit before running, or pass a path via `-DconfigPath`. |
 | `domains/IoT.POMDP` | POMDP domain: 4 states (S1–S4), 2 actions (DTP, ITP), 3 observations (SNR-L, SNR-E, SNR-G), reward table. |
@@ -193,7 +193,7 @@ On completion, output files are written to the directory set by `outputDirectory
 | Setting | Role | Default |
 |---------|------|---------|
 | `runSeed` | Random seed; vary for independent runs (e.g. 222, 223, 224) | `222` |
-| `surpriseMeasureForGamma` | Surprise signal: `MIS`, `CC`, or `BF` | `MIS` |
+| `surpriseMeasureForGamma` | Surprise signal: `MIP`, `CC`, or `BF` | `MIP` |
 | `useSurpriseUpdating` | `true` = SMiLe updates; `false` = classic Bayesian | `true` |
 | `p_c` | Volatility in (0,1); `m = p_c/(1-p_c)` | `0.5` |
 | `lookback` | Lookback window `m` for MIP (integer ≥ 1) | `4` |
@@ -217,10 +217,10 @@ On completion, output files are written to the directory set by `outputDirectory
 | `MECSattimestep.txt` | Energy consumption (Coulombs) per timestep. Two columns: `timestep value`. |
 | `RPLSattimestep.txt` | Packet-loss ratio per timestep. Same two-column format. |
 | `gamma.txt` | SMiLe mixing factor γ per mote per timestep. |
-| `surpriseMIS.txt` | MIP surprise value per mote per timestep. |
+| `surpriseMIP.txt` | MIP surprise value per mote per timestep. |
 | `surpriseCC.txt` | CC surprise value per mote per timestep. |
 | `surpriseBF.txt` | BF surprise value per mote per timestep. |
-| `MISBounds.txt` | Theorem 1 confidence interval bounds. Three columns: `timestep lowerBound upperBound`. |
+| `MIPBounds.txt` | Theorem 1 confidence interval bounds. Three columns: `timestep lowerBound upperBound`. |
 | `SelectedAction.txt` | DTP or ITP action selected each timestep. |
 | `mote_metrics.txt` | Per-mote/per-link SNR, power, distribution factor, spreading factor. |
 | `IoT.alpha` | Converged alpha vectors (value function). |
@@ -268,7 +268,7 @@ algorithmType=erperseus
 lambda=0.1
 
 runSeed=222
-surpriseMeasureForGamma=MIS
+surpriseMeasureForGamma=MIP
 p_c=0.25
 useSurpriseUpdating=true
 lookback=5
@@ -344,7 +344,7 @@ Key settings in `output_dir/compare/erperseus.config`:
 | `algorithmType` | `erperseus` |
 | `lambda` | `1.0` |
 | `runSeed` | `222` |
-| `surpriseMeasureForGamma` | `MIS` |
+| `surpriseMeasureForGamma` | `MIP` |
 | `useSurpriseUpdating` | `true` |
 | `p_c` | `0.5` |
 | `lookback` | `4` |

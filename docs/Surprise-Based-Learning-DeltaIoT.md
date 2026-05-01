@@ -15,7 +15,7 @@ We align DeltaIoT’s implementation with the paper’s Algorithm 1 and terminol
 | \(\pi_0\) | `p.transitionBeliefReset` | **Initial (flat) beliefs**: Dirichlet pseudo-counts for the same transitions, kept as a uniform prior. |
 | \(W\), \(W_{X_n}\) | Normalised `transitionBeliefCurr` (via `getTransitionProbability`) | **World model**: transition probabilities used by the POMDP; derived by normalising the current belief pseudo-counts. |
 | \(X_n\) | Observed (state, action, next state) | The transition selected by the current state–action pair and the observed next state. |
-| \(S_{\text{Bayes}}\) | CC, BF, or MIS (see Section 4) | **Surprise** given the current belief and the observation. |
+| \(S_{\text{Bayes}}\) | CC, BF, or MIP (see Section 4) | **Surprise** given the current belief and the observation. |
 | \(P_c\) | `p_c` (e.g. 0.5) | **Probability of change**: domain parameter for environment volatility. |
 | \(m\) | `m = p_c / (1 - p_c)` | **Rate of change** in the environment. |
 | \(\gamma\) | `gamma` | **Adaptation rate**: weight on the flat prior in the SMiLe update. |
@@ -84,7 +84,7 @@ So in notation aligned with the paper: the “\(B_{X_n}\)” and “\(\pi_0\)”
 
 ## 4. Measures of Surprise
 
-The implementation supports **three** surprise measures for computing \(\gamma\); one is chosen at runtime via `surpriseMeasureForGamma` (e.g. `"CC"`, `"BF"`, or `"MIS"`).
+The implementation supports **three** surprise measures for computing \(\gamma\); one is chosen at runtime via `surpriseMeasureForGamma` (e.g. `"CC"`, `"BF"`, or `"MIP"`).
 
 ### 4.1 Confidence-Corrected Surprise (CC)
 
@@ -102,18 +102,18 @@ The implementation supports **three** surprise measures for computing \(\gamma\)
 - **Implementation**: `getLogPredProbs` gives \(\log P(\text{nextstate} \mid s, a)\) for each state \(s\) under each belief (current vs reset); these are combined with the state belief to get predicted probabilities, then the log ratio is taken.
 - **Use**: High BF ⇒ the observation is much more likely under the flat prior than under the current model ⇒ high surprise ⇒ high \(\gamma\).
 
-### 4.3 Mutual Information Surprise (MIS)
+### 4.3 Mutual Information Surprise (MIP)
 
-- **Method**: `calculateAndStoreMIS(transitionBeliefPrior, transitionBeliefPosterior, action, nextstate, moteId, timestep)`.
-- **Idea**: Surprise as **change in mutual information** over time: MIS = MI(now) − MI(now − lookback). MI for a given belief is (prior entropy of the Dirichlet over next states) − (posterior entropy after observing the transition), averaged over current states with the state belief.
+- **Method**: `calculateAndStoreMIP(transitionBeliefPrior, transitionBeliefPosterior, action, nextstate, moteId, timestep)`.
+- **Idea**: Surprise as **change in mutual information** over time: MIP = MI(now) − MI(now − lookback). MI for a given belief is (prior entropy of the Dirichlet over next states) − (posterior entropy after observing the transition), averaged over current states with the state belief.
 - **Implementation**:  
   - Prior entropy: `getMoteEntropy(transitionBeliefPrior, action, nextstate)` (belief-weighted sum of Dirichlet entropies for each (state, action)).  
   - Posterior entropy: same with `transitionBeliefPosterior` (belief **after** +1.0 for the observed transition).  
   - MI = prior entropy − posterior entropy (information gained by the observation).  
-  - Per-mote MI history is kept; MIS = current MI − MI at (current − lookback). For \(\gamma\), the **absolute value** of MIS is used and scaled to avoid \(\log(0)\); the sign of MIS is used for interpretation (e.g. over-exploitation vs over-exploration in comments).
-- **Use**: Captures whether the learner is gaining new information (MIS > 0) or not (MIS < 0); magnitude of MIS drives \(\gamma\) so that surprising (informative) observations increase the pull toward the flat prior.
+  - Per-mote MI history is kept; MIP = current MI − MI at (current − lookback). For \(\gamma\), the **absolute value** of MIP is used and scaled to avoid \(\log(0)\); the sign of MIP is used for interpretation (e.g. over-exploitation vs over-exploration in comments).
+- **Use**: Captures whether the learner is gaining new information (MIP > 0) or not (MIP < 0); magnitude of MIP drives \(\gamma\) so that surprising (informative) observations increase the pull toward the flat prior.
 
-Only **one** of CC, BF, or MIS is used as the surprise value \(S\) in the \(\gamma\) formula in each call to `updateTransitionBelief`.
+Only **one** of CC, BF, or MIP is used as the surprise value \(S\) in the \(\gamma\) formula in each call to `updateTransitionBelief`.
 
 ---
 
@@ -160,7 +160,7 @@ After the blend, `transitionBeliefCurr` is replaced by the blended pseudo-counts
 
 1. **Copy** `transitionBeliefCurr` and `transitionBeliefReset` to temporary arrays.
 2. **Bayesian update (Δ)**: For each prior state index, add 1.0 to `[stateIndex][action][nextstate]` in both temporaries.
-3. **Surprise**: Compute CC, BF, and MIS from the appropriate beliefs (current vs reset; for MIS, prior vs posterior temporaries). Choose one as \(S\) via `surpriseMeasureForGamma` and convert to `logSurprise` (or use log directly for BF).
+3. **Surprise**: Compute CC, BF, and MIP from the appropriate beliefs (current vs reset; for MIP, prior vs posterior temporaries). Choose one as \(S\) via `surpriseMeasureForGamma` and convert to `logSurprise` (or use log directly for BF).
 4. **\(\gamma\)**: \(m = p_c/(1-p_c)\), \(S = \exp(\texttt{logSurprise})\) (or equivalent), \(\gamma = 1/(1 + 1/(m \cdot S))\), clamped to \([\texttt{eps}, 1]\).
 5. **SMiLe**: For the taken action, blend the two temporaries:  
    `transitionBeliefCurrTemp[s][a][s']] = (1−γ) * transitionBeliefCurrTemp[s][a][s']] + γ * transitionBeliefResetTemp[s][a][s']]`.
@@ -218,12 +218,12 @@ STEP 3: Compute surprise measures (all three; one will be used for γ)
   // Bayes Factor Surprise (BF): log( P_reset(obs) / P_curr(obs) ); already in log space
   logSurprise_BF := max(eps, BayesFactorSurprise(B_curr, B_reset, action, nextstate))
 
-  // Mutual Information Surprise (MIS): change in MI over time (prior entropy − posterior entropy)
-  MIS_result := CalculateAndStoreMIS(B_curr, B_curr_temp, action, nextstate, moteId, timestep)
-  current_MIS := MIS_result.mis
-  abs_MIS     := |current_MIS|
-  scaled_MIS  := max(eps, abs_MIS)
-  logSurprise_MIS := log(scaled_MIS)
+  // Mutual Information Surprise (MIP): change in MI over time (prior entropy − posterior entropy)
+  MIP_result := CalculateAndStoreMIP(B_curr, B_curr_temp, action, nextstate, moteId, timestep)
+  current_MIP := MIP_result.mis
+  abs_MIP     := |current_MIP|
+  scaled_MIP  := max(eps, abs_MIP)
+  logSurprise_MIP := log(scaled_MIP)
 
 ────────────────────────────────────────────────────────────────────────────────
 STEP 4: Select surprise for γ and convert to linear scale S
@@ -231,7 +231,7 @@ STEP 4: Select surprise for γ and convert to linear scale S
 
   If surpriseMeasureForGamma == "CC"  then logSurprise := logSurprise_CC
   If surpriseMeasureForGamma == "BF"  then logSurprise := logSurprise_BF
-  If surpriseMeasureForGamma == "MIS" then logSurprise := logSurprise_MIS
+  If surpriseMeasureForGamma == "MIP" then logSurprise := logSurprise_MIP
 
   S := exp(logSurprise)   // surprise in linear scale for γ formula
 
@@ -279,5 +279,5 @@ Optional: Logging (append to files)
   appendToFile("surpriseBF.txt",  exp(logSurprise_BF),  moteId, timestep)
   appendToFile("gamma.txt",       gamma,                 moteId, timestep)
   appendToFile("surpriseCC.txt",  exp(logSurprise_CC),  moteId, timestep)
-  appendToFile("surpriseMIS.txt", current_MIS,           moteId, timestep)
+  appendToFile("surpriseMIP.txt", current_MIP,           moteId, timestep)
 ```

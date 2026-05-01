@@ -32,8 +32,8 @@ logger.add(sys.stderr, level="INFO", format="<green>{time:HH:mm:ss}</green> | <l
 SEEDS = [222, 223, 224]
 NUM_TIMESTEPS = 500  # fixed in SolvePOMDP.java
 STAT_COLS = ["mean", "median", "Q1", "Q3", "lower_fence", "upper_fence"]
-# Three principle surprise configs: MIS, CC, and no surprise (useSurpriseUpdating=false)
-DEFAULT_SURPRISE_OPTIONS = ["MIS", "CC", "no_surprise", "BF"]
+# Three principle surprise configs: MIP, CC, and no surprise (useSurpriseUpdating=false)
+DEFAULT_SURPRISE_OPTIONS = ["MIP", "CC", "no_surprise", "BF"]
 SURPRISE_OPTIONS = DEFAULT_SURPRISE_OPTIONS  # may be overridden by --surprise CLI arg
 
 
@@ -67,7 +67,7 @@ def write_run_config(
     lookback: int | None = None,
     mec_threshold: float | None = None,
     rpl_threshold: float | None = None,
-    surprise: str = "MIS",
+    surprise: str = "MIP",
     link_failure_timestep: int | None = None,
     link_failure_links: str | None = None,
     link_recovery_timestep: int | None = None,
@@ -90,7 +90,7 @@ def write_run_config(
         lines = set_config_value(lines, "surpriseMeasureForGamma", surprise)
         lines = set_config_value(lines, "useSurpriseUpdating", "true")
     else:
-        lines = set_config_value(lines, "surpriseMeasureForGamma", "MIS")
+        lines = set_config_value(lines, "surpriseMeasureForGamma", "MIP")
         lines = set_config_value(lines, "useSurpriseUpdating", "false")
     if link_failure_timestep is not None and link_failure_timestep >= 0:
         lines = set_config_value(lines, "linkFailureTimestep", str(link_failure_timestep))
@@ -209,25 +209,25 @@ ABL1_LAMBDA = {
     "id": "abl1_lambda",
     "name": "lambda",
     "levels": [0.0, 0.1, 0.5, 1.0, 2.0, 5.0, 20.0],
-    "fixed": {"p_c": 0.5, "lookback": 4, "surprise": "MIS", "mec": 20, "rpl": 0.2, "disaster": None},
+    "fixed": {"p_c": 0.5, "lookback": 4, "surprise": "MIP", "mec": 20, "rpl": 0.2, "disaster": None},
 }
 ABL2_PC = {
     "id": "abl2_pc",
     "name": "p_c",
     "levels": [0.25, 0.5, 0.75],
-    "fixed": {"lambda": 1.0, "lookback": 4, "surprise": "MIS", "mec": 20, "rpl": 0.2, "disaster": None},
+    "fixed": {"lambda": 1.0, "lookback": 4, "surprise": "MIP", "mec": 20, "rpl": 0.2, "disaster": None},
 }
 ABL3_LOOKBACK = {
     "id": "abl3_lookback",
     "name": "lookback",
     "levels": [2, 3, 4, 5],
-    "fixed": {"lambda": 1.0, "p_c": 0.5, "surprise": "MIS", "mec": 20, "rpl": 0.2, "disaster": None},
+    "fixed": {"lambda": 1.0, "p_c": 0.5, "surprise": "MIP", "mec": 20, "rpl": 0.2, "disaster": None},
 }
 ABL4_NFR = {
     "id": "abl4_nfr",
     "name": "nfr",
     "levels": [(20, 0.2), (17, 0.17), (16.5, 0.165), (16, 0.16), (15, 0.15)],
-    "fixed": {"lambda": 1.0, "p_c": 0.5, "lookback": 4, "surprise": "MIS", "disaster": None},
+    "fixed": {"lambda": 1.0, "p_c": 0.5, "lookback": 4, "surprise": "MIP", "disaster": None},
 }
 ABL6_LAMBDA_NFR = {
     "id": "abl6_lambda_nfr",
@@ -237,7 +237,7 @@ ABL6_LAMBDA_NFR = {
         for lam in [0.1, 0.5, 1.0, 2.0, 5.0]
         for mec, rpl in [(20, 0.2), (17, 0.17), (16, 0.16), (15, 0.15)]
     ],
-    "fixed": {"p_c": 0.5, "lookback": 4, "surprise": "MIS", "disaster": None},
+    "fixed": {"p_c": 0.5, "lookback": 4, "surprise": "MIP", "disaster": None},
 }
 ABL5_DISASTER = {
     "id": "abl5_disaster",
@@ -249,7 +249,7 @@ ABL5_DISASTER = {
         ("fail0_2-4_10-6_12-3_perm", 0, "2-4,10-6,12-3", -1),
         ("fail0_2-4_10-6_12-3_rec250", 0, "2-4,10-6,12-3", 250),
     ],
-    "fixed": {"lambda": 1.0, "p_c": 0.5, "lookback": 4, "surprise": "MIS", "mec": 20, "rpl": 0.2},
+    "fixed": {"lambda": 1.0, "p_c": 0.5, "lookback": 4, "surprise": "MIP", "mec": 20, "rpl": 0.2},
 }
 
 
@@ -509,7 +509,7 @@ def main_plots(args: argparse.Namespace, root: Path) -> None:
             if metric not in df.columns:
                 continue
             if has_surprise:
-                # Grouped bars: one group per level, 3 bars per group (MIS, CC, no_surprise)
+                # Grouped bars: one group per level, 3 bars per group (MIP, CC, no_surprise)
                 levels_uniq = df["level"].unique()
                 surprises = df["surprise"].unique()
                 n_levels = len(levels_uniq)
@@ -547,21 +547,21 @@ def main_readme(args: argparse.Namespace, root: Path) -> None:
     readme_path = results_dir / "README.md"
     content = """# Ablation Study Results
 
-This directory contains outputs from the ablation study (run via `scripts/run_ablation.py`). Each ablation is run under **three surprise configurations**: **MIS**, **CC**, and **no_surprise** (useSurpriseUpdating=false), so all other ablation variations (lambda, p_c, lookback, NFR, disaster) are compared within these three settings.
+This directory contains outputs from the ablation study (run via `scripts/run_ablation.py`). Each ablation is run under **three surprise configurations**: **MIP**, **CC**, and **no_surprise** (useSurpriseUpdating=false), so all other ablation variations (lambda, p_c, lookback, NFR, disaster) are compared within these three settings.
 
 ## Directory layout
 
 Each ablation folder (abl1_lambda, abl2_pc, etc.) contains three subfolders, one per surprise option:
-- **MIS/** — Mutual Information Surprise (surpriseMeasureForGamma=MIS, useSurpriseUpdating=true).
+- **MIP/** — Mutual Information Surprise (surpriseMeasureForGamma=MIP, useSurpriseUpdating=true).
 - **CC/** — Confidence-Corrected surprise (surpriseMeasureForGamma=CC, useSurpriseUpdating=true).
 - **no_surprise/** — No surprise modulation (useSurpriseUpdating=false; classic Bayesian updates).
 
 Within each surprise subfolder, run dirs follow the same naming as before:
-- **abl1_lambda/{MIS|CC|no_surprise}/lam{value}_seed{seed}/**
-- **abl2_pc/{MIS|CC|no_surprise}/pc{value}_seed{seed}/**
-- **abl3_lookback/{MIS|CC|no_surprise}/m{value}_seed{seed}/**
-- **abl4_nfr/{MIS|CC|no_surprise}/mec{mec}_rpl{rpl}_seed{seed}/**
-- **abl5_disaster/{MIS|CC|no_surprise}/{scenario_id}_seed{seed}/**
+- **abl1_lambda/{MIP|CC|no_surprise}/lam{value}_seed{seed}/**
+- **abl2_pc/{MIP|CC|no_surprise}/pc{value}_seed{seed}/**
+- **abl3_lookback/{MIP|CC|no_surprise}/m{value}_seed{seed}/**
+- **abl4_nfr/{MIP|CC|no_surprise}/mec{mec}_rpl{rpl}_seed{seed}/**
+- **abl5_disaster/{MIP|CC|no_surprise}/{scenario_id}_seed{seed}/**
 - **configs/** — Generated per-run config files used for each experiment.
 - **figures/** — Plots of mean MEC and mean RPL vs factor levels, with grouped bars per surprise (e.g. `abl1_lambda_metrics.png`).
 
@@ -609,13 +609,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Ablation study runner for L4Project")
     parser.add_argument("--ablations", nargs="+", help="Run only these ablation IDs (e.g. abl1_lambda abl2_pc)")
     parser.add_argument("--quick", action="store_true", help="Quick mode: 1 seed, 2 levels per ablation")
-    parser.add_argument("--surprise", nargs="+", help="Surprise options to run (e.g. MIS CC BF no_surprise); defaults to all three")
+    parser.add_argument("--surprise", nargs="+", help="Surprise options to run (e.g. MIP CC BF no_surprise); defaults to all three")
     sub = parser.add_subparsers(dest="cmd", help="Command")
     for name in ["run", "summary", "plots", "readme"]:
         sp = sub.add_parser(name)
         sp.add_argument("--ablations", nargs="+", dest="ablations", help="Limit to these ablation IDs")
         sp.add_argument("--quick", action="store_true", dest="quick", help="Quick mode")
-        sp.add_argument("--surprise", nargs="+", dest="surprise", help="Surprise options to run (e.g. MIS CC BF no_surprise)")
+        sp.add_argument("--surprise", nargs="+", dest="surprise", help="Surprise options to run (e.g. MIP CC BF no_surprise)")
         if name == "run":
             sp.add_argument(
                 "--overwrite",

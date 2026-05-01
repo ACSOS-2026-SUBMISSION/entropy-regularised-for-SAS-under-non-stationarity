@@ -29,7 +29,7 @@ graph TB
 
             PLAN["PLAN (ERPerseus Solver)<br/>─────────────────────<br/>1. solver.solve(pomdp):<br/>&nbsp;&nbsp;&nbsp;a. Sample belief points via random rollouts<br/>&nbsp;&nbsp;&nbsp;b. Iterative backup stages until convergence<br/>&nbsp;&nbsp;&nbsp;c. Entropy-regularised softmax backups (λ > 0)<br/>&nbsp;&nbsp;&nbsp;→ Returns ArrayList﹤AlphaVector﹥ (value function V)<br/>2. ERPolicy.selectAction(b₀):<br/>&nbsp;&nbsp;&nbsp;a. Q(a) = max over α-vectors for action a: α · b<br/>&nbsp;&nbsp;&nbsp;b. π(a|b) = softmax(Q(a) / λ)<br/>&nbsp;&nbsp;&nbsp;c. Sample action from π → selectedAction"]
 
-            EXECUTE["EXECUTE<br/>─────────────────────<br/>1. DeltaIOTConnector.performAction(selectedAction)<br/>&nbsp;&nbsp;&nbsp;├─ action 0 → performDTP (decrease power, adjust SF)<br/>&nbsp;&nbsp;&nbsp;└─ action 1 → performITP (increase power, adjust SF)<br/>2. Inside performAction:<br/>&nbsp;&nbsp;&nbsp;a. POMDP.nextState(currState, action)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ runs DTP/ITP on selected mote<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ QoSDataHelper waits for sim data<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ maps (PL, EC) to state 0–3<br/>&nbsp;&nbsp;&nbsp;b. updateTransitionBelief(action, nextState)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ compute surprise (CC / BF / MIS)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ γ = mS / (1 + mS), m = p_c / (1 − p_c)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ blend: b' = (1−γ)·b_updated + γ·b_flat<br/>&nbsp;&nbsp;&nbsp;c. getObservation(action, nextState)<br/>&nbsp;&nbsp;&nbsp;d. POMDP.updateBelief() (Bayes rule)"]
+            EXECUTE["EXECUTE<br/>─────────────────────<br/>1. DeltaIOTConnector.performAction(selectedAction)<br/>&nbsp;&nbsp;&nbsp;├─ action 0 → performDTP (decrease power, adjust SF)<br/>&nbsp;&nbsp;&nbsp;└─ action 1 → performITP (increase power, adjust SF)<br/>2. Inside performAction:<br/>&nbsp;&nbsp;&nbsp;a. POMDP.nextState(currState, action)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ runs DTP/ITP on selected mote<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ QoSDataHelper waits for sim data<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ maps (PL, EC) to state 0–3<br/>&nbsp;&nbsp;&nbsp;b. updateTransitionBelief(action, nextState)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ compute surprise (CC / BF / MIP)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ γ = mS / (1 + mS), m = p_c / (1 − p_c)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ blend: b' = (1−γ)·b_updated + γ·b_flat<br/>&nbsp;&nbsp;&nbsp;c. getObservation(action, nextState)<br/>&nbsp;&nbsp;&nbsp;d. POMDP.updateBelief() (Bayes rule)"]
 
             MON_POST["MONITOR — Post-Execution<br/>─────────────────────<br/>1. Simulator.doSingleRun()<br/>&nbsp;&nbsp;&nbsp;→ simulates packet flow with new config<br/>2. timestepiot++ (track latest run index)<br/>3. QoSDataHelper.waitForQoSDataReady(run#)<br/>4. Extract packetLoss, energyConsumption<br/>5. Log to MECSat.txt / RPLSat.txt<br/>6. This state becomes next mote's baseline"]
 
@@ -137,7 +137,7 @@ sequenceDiagram
     Connector->>POMDP: Map (PL, EC) → state 0–3
 
     Note over Connector: SMiLe Belief Revision
-    Connector->>Connector: Compute surprise (MIS/CC/BF)
+    Connector->>Connector: Compute surprise (MIP/CC/BF)
     Connector->>Connector: γ = mS / (1 + mS)
     Connector->>Connector: b' = (1−γ)·b_updated + γ·b_flat
     Connector->>POMDP: getObservation(action, nextState)
@@ -198,13 +198,13 @@ graph LR
 graph LR
     subgraph Surprise["Surprise Computation"]
         direction TB
-        SM["Selected Measure<br/>(solver.config: MIS / CC / BF)"]
+        SM["Selected Measure<br/>(solver.config: MIP / CC / BF)"]
         CC["CC: KL-divergence<br/>of Dirichlet dists"]
         BF["BF: Log-ratio of<br/>predicted probabilities"]
-        MIS["MIS: MI[t] − MI[t − lookback]<br/>with confidence bounds"]
+        MIP["MIP: MI[t] − MI[t − lookback]<br/>with confidence bounds"]
         SM --> CC
         SM --> BF
-        SM --> MIS
+        SM --> MIP
     end
 
     S_VAL["S = exp(logSurprise)"]
@@ -214,7 +214,7 @@ graph LR
 
     CC --> S_VAL
     BF --> S_VAL
-    MIS --> S_VAL
+    MIP --> S_VAL
     S_VAL --> GAMMA
     M_VAL --> GAMMA
     GAMMA --> BLEND
@@ -227,7 +227,7 @@ graph LR
     classDef result fill:#D4EDDA,stroke:#28A745,color:#000
     classDef reset fill:#F8D7DA,stroke:#DC3545,color:#000
 
-    class CC,BF,MIS,SM surprise
+    class CC,BF,MIP,SM surprise
     class S_VAL,M_VAL,GAMMA,BLEND formula
     class TRUST result
     class RESET reset

@@ -16,7 +16,7 @@ from pathlib import Path
 from config_utils import load_config_template, set_config_value
 
 ALGORITHM_TYPES = ("erperseus", "perseus", "erpbvi", "faserpbvi")
-SURPRISE_MEASURES = ("CC", "BF", "MIS")
+SURPRISE_MEASURES = ("CC", "BF", "MIP")
 
 
 def project_root() -> Path:
@@ -111,17 +111,17 @@ def prompt_bool(name: str, default: bool, env_val: str | None = None) -> bool:
 
 
 def prompt_surprise_measure(env_val: str | None) -> str:
-    """Prompt for surpriseMeasureForGamma: CC, BF, or MIS."""
+    """Prompt for surpriseMeasureForGamma: CC, BF, or MIP."""
     while True:
         if env_val is not None:
             raw = env_val.strip().upper()
             env_val = None
         else:
-            print("  surpriseMeasureForGamma: CC, BF, or MIS")
-            raw = prompt("surpriseMeasureForGamma", "MIS").strip().upper()
+            print("  surpriseMeasureForGamma: CC, BF, or MIP")
+            raw = prompt("surpriseMeasureForGamma", "MIP").strip().upper()
         if raw in SURPRISE_MEASURES:
             return raw
-        print("  Invalid. Choose CC, BF, or MIS")
+        print("  Invalid. Choose CC, BF, or MIP")
 
 
 def prompt_link_failure_timestep(env_val: str | None) -> str:
@@ -242,9 +242,9 @@ def collect_params(interactive: bool) -> dict:
         params["useSurpriseUpdating"] = (
             (get_env("useSurpriseUpdating") or "true").strip().lower() in ("true", "1", "yes")
         )
-        params["surpriseMeasureForGamma"] = (get_env("surpriseMeasureForGamma") or "MIS").strip().upper()
+        params["surpriseMeasureForGamma"] = (get_env("surpriseMeasureForGamma") or "MIP").strip().upper()
         if params["surpriseMeasureForGamma"] not in SURPRISE_MEASURES:
-            params["surpriseMeasureForGamma"] = "MIS"
+            params["surpriseMeasureForGamma"] = "MIP"
         params["p_c"] = float(get_env("p_c") or "0.5")
         params["lookback"] = int(get_env("lookback") or "5")
         params["mecThreshold"] = float(get_env("mecThreshold") or "20")

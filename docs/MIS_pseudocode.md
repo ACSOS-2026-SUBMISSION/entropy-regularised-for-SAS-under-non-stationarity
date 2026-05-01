@@ -1,4 +1,4 @@
-# Mutual Information Surprise (MIS) – Detailed Pseudocode
+# Mutual Information Surprise (MIP) – Detailed Pseudocode
 
 **Source:** [DeltaIOTConnector.java](../src/iot/DeltaIOTConnector.java) (lines 261–302, 406–425, 440–495)  
 **Paper:** Wang et al., *Mutual Information Surprise: Rethinking Unexpectedness in Autonomous Systems*, arXiv:2508.17403, 2025.  
@@ -6,17 +6,17 @@
 
 ---
 
-## 1. Role of MIS in This Codebase
+## 1. Role of MIP in This Codebase
 
-MIS is used inside **`updateTransitionBelief`** when the surprise measure is set to `"MIS"`. Each time a transition `(action, nextstate)` is observed, the connector:
+MIP is used inside **`updateTransitionBelief`** when the surprise measure is set to `"MIP"`. Each time a transition `(action, nextstate)` is observed, the connector:
 
 1. Updates Dirichlet counts with +1.0 for that transition (prior → posterior).
-2. Computes MIS via **`calculateAndStoreMIS`** (prior = current belief, posterior = belief after +1.0).
-3. Converts MIS into a **SMiLe gamma** (learning rate):
-   - **MIS &lt; 0** (stalled learning / exploitation): lower gamma → more blending toward a flat prior, encouraging exploration.
-   - **MIS &gt; 0** (extra learning / exploration): higher gamma → less blending, continuing to exploit the current transition belief.
+2. Computes MIP via **`calculateAndStoreMIP`** (prior = current belief, posterior = belief after +1.0).
+3. Converts MIP into a **SMiLe gamma** (learning rate):
+   - **MIP &lt; 0** (stalled learning / exploitation): lower gamma → more blending toward a flat prior, encouraging exploration.
+   - **MIP &gt; 0** (extra learning / exploration): higher gamma → less blending, continuing to exploit the current transition belief.
 
-Thus, in this connector MIS acts as a **learning-progression signal** that modulates how much the transition belief is shifted toward a vague prior vs. kept close to the count-updated belief, in the spirit of the paper’s *enlightenment vs. frustration* and the MIS Reaction Policy (MISRP).
+Thus, in this connector MIP acts as a **learning-progression signal** that modulates how much the transition belief is shifted toward a vague prior vs. kept close to the count-updated belief, in the spirit of the paper’s *enlightenment vs. frustration* and the MIP Reaction Policy (MIPRP).
 
 ---
 
@@ -29,20 +29,20 @@ Thus, in this connector MIS acts as a **learning-progression signal** that modul
 | `action` | `int` | Action taken (e.g. DTP / ITP). |
 | `nextstate` | `int` | Observed next state. (Not used inside `getMoteEntropy`; entropy is over the full next-state distribution.) |
 | `moteId` | `int` | Mote identifier; used to key a per-mote MI history. |
-| `timestep` | `int` | Current simulation timestep; used for logging MIS bounds. |
+| `timestep` | `int` | Current simulation timestep; used for logging MIP bounds. |
 | `priorEntropy` | `double` | Expected entropy of the transition belief **before** observing the transition. |
 | `posteriorEntropy` | `double` | Expected entropy **after** the +1.0 update. |
 | `mutualInformation` | `double` | `priorEntropy - posteriorEntropy`; one-step information gain from the observed transition. Treated as **Î** (MI estimate) for this timestep. |
-| `miHistory` | `Map<moteId, List<double>>` | For each mote, ordered list of MI values (one per call to `calculateAndStoreMIS`). Index `i` corresponds to the Î after the `(i+1)`-th observation. |
-| `lookback` | `int` | Number of steps between the two MI estimates used in MIS. Default **4**. Corresponds to **m** in the paper. |
+| `miHistory` | `Map<moteId, List<double>>` | For each mote, ordered list of MI values (one per call to `calculateAndStoreMIP`). Index `i` corresponds to the Î after the `(i+1)`-th observation. |
+| `lookback` | `int` | Number of steps between the two MI estimates used in MIP. Default **4**. Corresponds to **m** in the paper. |
 | `n` | `int` | `history.size() - lookback`. Index/ count of “older” observations for the *earlier* MI estimate Î_n. |
 | `m` | `int` | `lookback`. Number of “new” observations between Î_n and Î_{n+m}. |
 | `nPlusM` | `int` | `history.size()`. Total observations for the *current* MI estimate Î_{n+m}. |
-| `pivotVal` | `double` | Expected MIS under the *well-regulated* null: **log(n+m) − log(n)** (paper, undersampled case). |
+| `pivotVal` | `double` | Expected MIP under the *well-regulated* null: **log(n+m) − log(n)** (paper, undersampled case). |
 | `errorTerm` | `double` | Half-width of the Theorem 1 confidence interval: √(2m ln(2/ρ)) · ln(n+m) / (n+m). |
 | `rho` | `double` | Miscoverage; 1−ρ is the confidence level. Set to **0.05** (95% confidence). |
 | `lowerBound`, `upperBound` | `double` | `pivotVal ∓ errorTerm`. Theorem 1 bounds for Î_{n+m} − Î_n. |
-| `MISResult` | record | `{ mis, lowerBound, upperBound }`. `MISResult.zero()` = `(0, 0, 0)`. |
+| `MIPResult` | record | `{ mis, lowerBound, upperBound }`. `MIPResult.zero()` = `(0, 0, 0)`. |
 | `alpha` | `double[]` | Dirichlet parameters for one (state, action) → next-state distribution. |
 | `alpha0` | `double` | Sum of `alpha`. |
 | `k` | `int` | Length of `alpha` (number of next states). |
@@ -105,12 +105,12 @@ FUNCTION getMoteEntropy(transitionBelief: double[state][action][nextState],
 
 ---
 
-## 5. Main: Calculate and Store MIS
+## 5. Main: Calculate and Store MIP
 
-**Function:** `calculateAndStoreMIS(transitionBeliefPrior, transitionBeliefPosterior, action, nextstate, moteId, timestep) -> MISResult`
+**Function:** `calculateAndStoreMIP(transitionBeliefPrior, transitionBeliefPosterior, action, nextstate, moteId, timestep) -> MIPResult`
 
 **Paper:**  
-- **MIS definition (Eq. 4):** MIS ≜ Î_{n+m} − Î_n.  
+- **MIP definition (Eq. 4):** MIP ≜ Î_{n+m} − Î_n.  
 - **Theorem 1 (undersampled, n ≪ |X|,|Y|):** With probability ≥ 1−ρ,  
   Î_{n+m} − Î_n ∈ ( log(n+m) − log(n) ) ± ( √(2m ln(2/ρ)) · ln(n+m) ) / (n+m).
 
@@ -119,8 +119,8 @@ FUNCTION getMoteEntropy(transitionBelief: double[state][action][nextState],
 i.e. the decrease in expected entropy of the transition belief after the +1.0 update. The sequence of Î values is stored in `miHistory[moteId]`; the “n” and “n+m” in the paper correspond to positions in that history (see below).
 
 ```
-FUNCTION calculateAndStoreMIS(transitionBeliefPrior, transitionBeliefPosterior,
-                             action, nextstate, moteId, timestep) -> MISResult
+FUNCTION calculateAndStoreMIP(transitionBeliefPrior, transitionBeliefPosterior,
+                             action, nextstate, moteId, timestep) -> MIPResult
 
     // --- Step 1: Prior entropy (before +1.0 update) ---
     priorEntropy := getMoteEntropy(transitionBeliefPrior, action, nextstate)
@@ -138,12 +138,12 @@ FUNCTION calculateAndStoreMIS(transitionBeliefPrior, transitionBeliefPosterior,
     history := miHistory[moteId]
     APPEND mutualInformation TO history
 
-    // --- Step 5: MIS and Theorem 1 bounds (only if enough history) ---
+    // --- Step 5: MIP and Theorem 1 bounds (only if enough history) ---
     // Need at least (lookback + 1) entries: index (size-1) and (size-1-lookback).
     IF length(history) <= lookback:
-        RETURN MISResult.zero()   // (mis=0, lowerBound=0, upperBound=0)
+        RETURN MIPResult.zero()   // (mis=0, lowerBound=0, upperBound=0)
 
-    // --- Step 6: MIS = Î_{n+m} − Î_n (paper Eq. 4) ---
+    // --- Step 6: MIP = Î_{n+m} − Î_n (paper Eq. 4) ---
     // Mapping: Î_n      <- history[size-1-lookback]  (earlier)
     //          Î_{n+m}  <- history[size-1]          (current)
     // Here m = lookback, n = size - lookback (number of observations for Î_n).
@@ -156,7 +156,7 @@ FUNCTION calculateAndStoreMIS(transitionBeliefPrior, transitionBeliefPosterior,
 
     rho := 0.05   // 1−ρ = 0.95 confidence
 
-    // Pivot (expected MIS under well-regulated system, undersampled case)
+    // Pivot (expected MIP under well-regulated system, undersampled case)
     pivotVal := ln(nPlusM) - ln(n)
 
     // Half-width of the interval (paper Theorem 1)
@@ -167,21 +167,21 @@ FUNCTION calculateAndStoreMIS(transitionBeliefPrior, transitionBeliefPosterior,
 
     // --- Step 8: Optional logging (at most once per timestep) ---
     IF timestep > lastBoundsTimestep:
-        appendMISBoundsToFile(timestep, lowerBound, upperBound)
+        appendMIPBoundsToFile(timestep, lowerBound, upperBound)
         lastBoundsTimestep := timestep
 
-    RETURN MISResult(mis, lowerBound, upperBound)
+    RETURN MIPResult(mis, lowerBound, upperBound)
 ```
 
 **Oversampled case (paper):** For n ≫ |X|,|Y| the expectation becomes (|Y|−1)(1/n − 1/(n+m)). This code does **not** implement that; it uses only the undersampled pivot log(n+m)−log(n).
 
 ---
 
-## 6. Helper: Append MIS Bounds to File
+## 6. Helper: Append MIP Bounds to File
 
-**Function:** `appendMISBoundsToFile(timestep, lowerBound, upperBound)`
+**Function:** `appendMIPBoundsToFile(timestep, lowerBound, upperBound)`
 
-Appends one line to `outputDirectory/MISBounds.txt`:
+Appends one line to `outputDirectory/MIPBounds.txt`:
 
 ```
 timestep  lowerBound  upperBound
@@ -202,7 +202,7 @@ So:
 - **Prior entropy:** expected entropy of the transition belief before the observed transition.
 - **Posterior entropy:** expected entropy after the Bayesian +1.0 update for that transition.
 - **Î = priorEntropy − posteriorEntropy:** information gain from that one observation.
-- **MIS:** change in such Î over a window of `lookback` steps (Î_current − Î_{current−lookback}).
+- **MIP:** change in such Î over a window of `lookback` steps (Î_current − Î_{current−lookback}).
 
 ---
 
@@ -232,15 +232,15 @@ flowchart TD
         G[Append MI to miHistory moteId]
     end
 
-    subgraph mis [MIS and Theorem 1]
+    subgraph mis [MIP and Theorem 1]
         H{history.size > lookback?}
-        I[MIS = MI now - MI now-lookback]
+        I[MIP = MI now - MI now-lookback]
         J[Pivot = log nPlusM - log n]
         K[Error = sqrt 2m ln 2/rho * ln nPlusM / nPlusM]
         L[Bounds = Pivot +/- Error]
-        M[Append bounds to MISBounds.txt if first this t]
-        N[Return MISResult mis, lower, upper]
-        O[Return MISResult.zero]
+        M[Append bounds to MIPBounds.txt if first this t]
+        N[Return MIPResult mis, lower, upper]
+        O[Return MIPResult.zero]
     end
 
     A --> B
@@ -271,4 +271,4 @@ flowchart TD
 | n | Number of MI samples in the “earlier” window: `history.size() - lookback`. |
 | m | `lookback` (default 5): number of MI samples between Î_n and Î_{n+m}. |
 
-So the time series of Î is the sequence of *per-observation information gains* from the transition belief update; MIS is the change in that gain over a window of `lookback` steps, and the Theorem 1 bounds are used to decide whether that change is within the expected range for a well-regulated system.
+So the time series of Î is the sequence of *per-observation information gains* from the transition belief update; MIP is the change in that gain over a window of `lookback` steps, and the Theorem 1 bounds are used to decide whether that change is within the expected range for a well-regulated system.

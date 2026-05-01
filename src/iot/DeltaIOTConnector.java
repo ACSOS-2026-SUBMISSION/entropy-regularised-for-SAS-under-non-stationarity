@@ -22,7 +22,7 @@ import org.apache.commons.math3.special.Gamma;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-// TODO: use polarity of MIS surprise as an explainer of the learning behaviour of the agent
+// TODO: use polarity of MIP surprise as an explainer of the learning behaviour of the agent
 
 /**
  * The connector between the Simulator and the MAPE-K loop
@@ -31,24 +31,24 @@ public class DeltaIOTConnector {
 	private static final Logger log = LogManager.getLogger(DeltaIOTConnector.class);
 	
 	/**
-	 * Data class to hold MIS (Mutual Information Surprise) value along with its confidence bounds.
+	 * Data class to hold MIP (Mutual Information Surprise) value along with its confidence bounds.
 	 */
-	public static class MISResult {
+	public static class MIPResult {
 		public final double mis;
 		public final double lowerBound;
 		public final double upperBound;
 		
-		public MISResult(double mis, double lowerBound, double upperBound) {
+		public MIPResult(double mis, double lowerBound, double upperBound) {
 			this.mis = mis;
 			this.lowerBound = lowerBound;
 			this.upperBound = upperBound;
 		}
 		
 		/**
-		 * Returns a MISResult with all values set to 0.0 (used when insufficient history).
+		 * Returns a MIPResult with all values set to 0.0 (used when insufficient history).
 		 */
-		public static MISResult zero() {
-			return new MISResult(0.0, 0.0, 0.0);
+		public static MIPResult zero() {
+			return new MIPResult(0.0, 0.0, 0.0);
 		}
 	}
 	
@@ -75,16 +75,16 @@ public class DeltaIOTConnector {
 	
 	private double eps;
 	
-	// History of mutual information values per mote for MIS calculation
+	// History of mutual information values per mote for MIP calculation
 	private Map<Integer, ArrayList<Double>> miHistory;
-	private int lookback = 4; // m - lookback period for MIS calculation (SMiLe via setLookback)
+	private int lookback = 4; // m - lookback period for MIP calculation (SMiLe via setLookback)
 	// Track which timesteps have already had bounds written (to avoid duplicates)
 	private int lastBoundsTimestep = -1;
 	
 	// Track if header has been written to mote_metrics.txt
 	private static boolean moteMetricsHeaderWritten = false;
 	
-	// Surprise measure to use for gamma calculation: "CC" (Confidence-Corrected), "BF" (Bayes Factor), or "MIS" (Mutual Information Surprise)
+	// Surprise measure to use for gamma calculation: "CC" (Confidence-Corrected), "BF" (Bayes Factor), or "MIP" (Mutual Information Surprise)
 	private String surpriseMeasureForGamma = "CC"; // Default to Confidence-Corrected Surprise
 	
 	// Probability of change (volatility): in (0, 1); controls m = p_c/(1-p_c) in SMiLe gamma formula. SMiLe for experiments.
@@ -128,7 +128,7 @@ public class DeltaIOTConnector {
 		return this.p_c;
 	}
 	
-	/** Set lookback period (m) for MIS calculation. Must be > 0. Used in MIS = MI[current] - MI[current - lookback]. */
+	/** Set lookback period (m) for MIP calculation. Must be > 0. Used in MIP = MI[current] - MI[current - lookback]. */
 	public void setLookback(int lookback) {
 		if (lookback <= 0) {
 			throw new IllegalArgumentException("lookback must be > 0, got " + lookback);
@@ -185,19 +185,19 @@ public class DeltaIOTConnector {
 	
 	/**
 	 * Set which surprise measure to use for gamma calculation
-	 * @param measure "CC" for Confidence-Corrected Surprise, "BF" for Bayes Factor Surprise, or "MIS" for Mutual Information Surprise
+	 * @param measure "CC" for Confidence-Corrected Surprise, "BF" for Bayes Factor Surprise, or "MIP" for Mutual Information Surprise
 	 */
 	public void setSurpriseMeasureForGamma(String measure) {
-		if (measure.equals("CC") || measure.equals("BF") || measure.equals("MIS")) {
+		if (measure.equals("CC") || measure.equals("BF") || measure.equals("MIP")) {
 			this.surpriseMeasureForGamma = measure;
 		} else {
-			log.warn("Invalid surprise measure '{}'; use CC, BF, or MIS. Keeping: {}", measure, this.surpriseMeasureForGamma);
+			log.warn("Invalid surprise measure '{}'; use CC, BF, or MIP. Keeping: {}", measure, this.surpriseMeasureForGamma);
 		}
 	}
 	
 	/**
 	 * Get the current surprise measure used for gamma calculation
-	 * @return "CC", "BF", or "MIS"
+	 * @return "CC", "BF", or "MIP"
 	 */
 	public String getSurpriseMeasureForGamma() {
 		return this.surpriseMeasureForGamma;
@@ -447,15 +447,15 @@ public class DeltaIOTConnector {
 	}
 	
 	/**
-	 * Append MIS bounds to output file in format "timestep mis_lower mis_upper"
+	 * Append MIP bounds to output file in format "timestep mis_lower mis_upper"
 	 * @param timestep Current timestep
-	 * @param lowerBound Lower bound of MIS
-	 * @param upperBound Upper bound of MIS
+	 * @param lowerBound Lower bound of MIP
+	 * @param upperBound Upper bound of MIP
 	 */
-	private void appendMISBoundsToFile(int timestep, double lowerBound, double upperBound) {
+	private void appendMIPBoundsToFile(int timestep, double lowerBound, double upperBound) {
 		try {
 			// Use configured output directory
-			File file = new File(outputDirectory, "MISBounds.txt");
+			File file = new File(outputDirectory, "MIPBounds.txt");
 			// Ensure parent directory exists
 			if (file.getParentFile() != null && !file.getParentFile().exists()) {
 				file.getParentFile().mkdirs();
@@ -466,15 +466,15 @@ public class DeltaIOTConnector {
 				writer.flush(); // Ensure data is written immediately
 			}
 		} catch (IOException e) {
-			log.error("Error writing MIS bounds at timestep {}: {} (cwd={})", timestep, e.getMessage(), System.getProperty("user.dir"));
+			log.error("Error writing MIP bounds at timestep {}: {} (cwd={})", timestep, e.getMessage(), System.getProperty("user.dir"));
 		}
 	}
 	
 	/**
-	 * Calculates Mutual Information Surprise (MIS) for a given mote and timestep.
-	 * MIS represents the difference in mutual information (MI) between the current timestep and
-	 * the value from "lookback" timesteps earlier. Returns MISResult with MIS value and confidence bounds.
-	 * If there isn't enough MI history, returns MISResult with all values set to 0.0.
+	 * Calculates Mutual Information Surprise (MIP) for a given mote and timestep.
+	 * MIP represents the difference in mutual information (MI) between the current timestep and
+	 * the value from "lookback" timesteps earlier. Returns MIPResult with MIP value and confidence bounds.
+	 * If there isn't enough MI history, returns MIPResult with all values set to 0.0.
 	 *
 	 * @param transitionBeliefPrior The prior transition belief (before +1.0 update)
 	 * @param transitionBeliefPosterior The posterior updated transition belief (after +1.0 update)
@@ -482,9 +482,9 @@ public class DeltaIOTConnector {
 	 * @param nextstate The next state
 	 * @param moteId    The unique identifier for the mote
 	 * @param timestep  The current simulation timestep
-	 * @return          MISResult containing the computed MIS value and confidence bounds (all 0.0 if insufficient MI history)
+	 * @return          MIPResult containing the computed MIP value and confidence bounds (all 0.0 if insufficient MI history)
 	 */
-	private MISResult calculateAndStoreMIS(double[][][] transitionBeliefPrior, double[][][] transitionBeliefPosterior, int action, int nextstate, int moteId, int timestep) {
+	private MIPResult calculateAndStoreMIP(double[][][] transitionBeliefPrior, double[][][] transitionBeliefPosterior, int action, int nextstate, int moteId, int timestep) {
 		/// 1. CALCULATE PRIOR ENTROPY (uncertainty before observing the transition)
 		double priorEntropy = this.getMoteEntropy(transitionBeliefPrior, action, nextstate);
 		/// 2. CALCULATE POSTERIOR ENTROPY (uncertainty after observing the transition)
@@ -502,15 +502,15 @@ public class DeltaIOTConnector {
 		// Store current MI in history
 		history.add(mutualInformation);
 		
-		// Calculate MIS if we have enough history (need at least lookback+1 entries: current + lookback previous)
+		// Calculate MIP if we have enough history (need at least lookback+1 entries: current + lookback previous)
 		if (history.size() > lookback) {
-			// MIS = MI[current] - MI[current - lookback]
+			// MIP = MI[current] - MI[current - lookback]
 			double mis = history.get(history.size() - 1) - history.get(history.size() - 1 - lookback);
 
-			// Calculate upper and lower bounds of MIS according to Theorem 1
+			// Calculate upper and lower bounds of MIP according to Theorem 1
 			// Theorem 1: Î_{n+m} - Î_n ∈ (log(m + n) - log n) ± (2m log(2/ρ) log(m + n)) / (m + n)
 			// Where: m = lookback, n = history.size() - lookback (earlier timestep), n+m = history.size() (current)
-			double rho = 0.05; // Confidence level that true MIS value lies within copmuted bounds (0.05 -> 95% confidence)
+			double rho = 0.05; // Confidence level that true MIP value lies within copmuted bounds (0.05 -> 95% confidence)
 			int n = history.size() - lookback;  // Earlier timestep index
 			int m = lookback;                   // Lookback period
 			int nPlusM = history.size();        // Current timestep (n + m)
@@ -529,16 +529,16 @@ public class DeltaIOTConnector {
 			// Only write once per timestep (not per mote) to avoid duplicates
 			// Use the first mote that has enough history for this timestep to write the bounds
 			if (timestep > lastBoundsTimestep) {
-				appendMISBoundsToFile(timestep, lowerBound, upperBound);
+				appendMIPBoundsToFile(timestep, lowerBound, upperBound);
 				lastBoundsTimestep = timestep;
 			}
 			
-			// Return MISResult with computed values
-			return new MISResult(mis, lowerBound, upperBound);
+			// Return MIPResult with computed values
+			return new MIPResult(mis, lowerBound, upperBound);
 		}
 		
-		// If not enough history, return MISResult with all values set to 0.0 (no surprise yet)
-		return MISResult.zero();
+		// If not enough history, return MIPResult with all values set to 0.0 (no surprise yet)
+		return MIPResult.zero();
 	}
 	
 	public void clearFile(String filename) {
@@ -583,29 +583,29 @@ public class DeltaIOTConnector {
 		}
 
 		// Select which surprise measure to use for gamma calculation
-		// Options: "CC" (Confidence-Corrected Surprise - default), "BF" (Bayes Factor Surprise), or "MIS" (Mutual Information Surprise)
+		// Options: "CC" (Confidence-Corrected Surprise - default), "BF" (Bayes Factor Surprise), or "MIP" (Mutual Information Surprise)
 		// To change, call setSurpriseMeasureForGamma(measure) before running
 
 		double surpriseCC = confidenceCorrectedSurprise(p.transitionBeliefCurr, transitionBeliefResetTemp, action, nextstate);
 		double logSurpriseCC = Math.log(Math.max(this.eps, surpriseCC));
 		// bayesFactorSurprise already returns a log value, so don't take log again
 		double logSurpriseBF = Math.max(this.eps, bayesFactorSurprise(p.transitionBeliefCurr, p.transitionBeliefReset, action, nextstate));
-		MISResult misResult = calculateAndStoreMIS(p.transitionBeliefCurr, transitionBeliefCurrTemp, action, nextstate, DeltaIOTConnector.selectedmote.getMoteid(), DeltaIOTConnector.timestep);
-		double currentMIS = misResult.mis; // Extract MIS value for backward compatibility		
+		MIPResult misResult = calculateAndStoreMIP(p.transitionBeliefCurr, transitionBeliefCurrTemp, action, nextstate, DeltaIOTConnector.selectedmote.getMoteid(), DeltaIOTConnector.timestep);
+		double currentMIP = misResult.mis; // Extract MIP value for backward compatibility		
 
 		double logSurprise = 0.0;
 		if (surpriseMeasureForGamma.equals("CC")) {
 			logSurprise = logSurpriseCC;
 		} else if (surpriseMeasureForGamma.equals("BF")) {
 			logSurprise = logSurpriseBF;
-		} else if (surpriseMeasureForGamma.equals("MIS")) {
-			// MIS < 0 => over-exploitation, so we are gaining no new information. Retreat to a more vague prior to open up exploration
-			// MIS > 0 => over-exploration, so we are gaining new information. Continue to explore the current transition belief
-			// For MIS, we need to handle the sign: positive MIS means high surprise (more learning), negative means low surprise (less learning)
-			double absMIS = Math.abs(currentMIS);
-			// Add a small offset to prevent log(0) when MIS is exactly 0, but scale it so small MIS values still produce reasonable gamma
-			double scaledMIS = Math.max(this.eps, absMIS);
-			logSurprise = Math.log(scaledMIS);
+		} else if (surpriseMeasureForGamma.equals("MIP")) {
+			// MIP < 0 => over-exploitation, so we are gaining no new information. Retreat to a more vague prior to open up exploration
+			// MIP > 0 => over-exploration, so we are gaining new information. Continue to explore the current transition belief
+			// For MIP, we need to handle the sign: positive MIP means high surprise (more learning), negative means low surprise (less learning)
+			double absMIP = Math.abs(currentMIP);
+			// Add a small offset to prevent log(0) when MIP is exactly 0, but scale it so small MIP values still produce reasonable gamma
+			double scaledMIP = Math.max(this.eps, absMIP);
+			logSurprise = Math.log(scaledMIP);
 		}
 
 		// Classic Bayesian: use updated pseudo-counts only (no surprise, no gamma blend)
@@ -614,7 +614,7 @@ public class DeltaIOTConnector {
 			appendToFile(new File(outputDirectory, "surpriseBF.txt").getPath(), Math.exp(logSurpriseBF), DeltaIOTConnector.selectedmote.getMoteid(), DeltaIOTConnector.timestep);
 			appendToFile(new File(outputDirectory, "gamma.txt").getPath(), 0, DeltaIOTConnector.selectedmote.getMoteid(), DeltaIOTConnector.timestep);
 			appendToFile(new File(outputDirectory, "surpriseCC.txt").getPath(), Math.exp(logSurpriseCC), DeltaIOTConnector.selectedmote.getMoteid(), DeltaIOTConnector.timestep);
-			appendToFile(new File(outputDirectory, "surpriseMIS.txt").getPath(), currentMIS, DeltaIOTConnector.selectedmote.getMoteid(), DeltaIOTConnector.timestep);	
+			appendToFile(new File(outputDirectory, "surpriseMIP.txt").getPath(), currentMIP, DeltaIOTConnector.selectedmote.getMoteid(), DeltaIOTConnector.timestep);	
 			return;
 		}
 
@@ -624,7 +624,7 @@ public class DeltaIOTConnector {
 
 		// SMiLe gamma formula (Definition 4): gamma(S, m) = mS / (1 + mS)
 		// Equivalent form: gamma = 1 / (1 + 1/(m*S)) where S = exp(logSurprise)
-		// This ensures: high surprise/|MIS| -> high gamma (less learning), low surprise -> low gamma (more learning)
+		// This ensures: high surprise/|MIP| -> high gamma (less learning), low surprise -> low gamma (more learning)
 		// This form is numerically stable and equivalent to mS/(1+mS)
 		double gamma = 1.0 / (1.0 + (1/ (m*Math.exp(logSurprise))));
 		// Ensure gamma has a minimum value to allow some learning even when surprise is very low
@@ -634,7 +634,7 @@ public class DeltaIOTConnector {
 		appendToFile(new File(outputDirectory, "surpriseBF.txt").getPath(), Math.exp(logSurpriseBF), DeltaIOTConnector.selectedmote.getMoteid(), DeltaIOTConnector.timestep);
 		appendToFile(new File(outputDirectory, "gamma.txt").getPath(), gamma, DeltaIOTConnector.selectedmote.getMoteid(), DeltaIOTConnector.timestep);
 		appendToFile(new File(outputDirectory, "surpriseCC.txt").getPath(), Math.exp(logSurpriseCC), DeltaIOTConnector.selectedmote.getMoteid(), DeltaIOTConnector.timestep);
-		appendToFile(new File(outputDirectory, "surpriseMIS.txt").getPath(), currentMIS, DeltaIOTConnector.selectedmote.getMoteid(), DeltaIOTConnector.timestep);
+		appendToFile(new File(outputDirectory, "surpriseMIP.txt").getPath(), currentMIP, DeltaIOTConnector.selectedmote.getMoteid(), DeltaIOTConnector.timestep);
 
 		// SMiLe updating of transitionBeliefCurr
 		// The SMiLe rule: new_belief = (1-gamma) * updated_current + gamma * updated_flat_prior

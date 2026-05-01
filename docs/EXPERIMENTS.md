@@ -3,7 +3,7 @@
 This document describes how to **reliably test** the L4Project system for results in your academic paper, given:
 
 - **Algorithm:** Perseus vs ERPerseus  
-- **Surprise measure:** MIS vs CC  
+- **Surprise measure:** MIP vs CC  
 - **p_c** ∈ (0, 1)  
 - **lambda** ∈ [0, 10] (only affects ERPerseus (there is no actual upper bound for lambda))
 
@@ -16,7 +16,7 @@ All experiment parameters are driven by **solver.config** (and optionally `-Dcon
 | Parameter | Config key | Range / values | Default |
 |-----------|------------|----------------|---------|
 | Algorithm | `algorithmType` | `perseus`, `erperseus` | `erperseus` |
-| Surprise | `surpriseMeasureForGamma` | `CC`, `BF`, `MIS` | `MIS` |
+| Surprise | `surpriseMeasureForGamma` | `CC`, `BF`, `MIP` | `MIP` |
 | Volatility | `p_c` | (0, 1) | `0.5` |
 | ER temperature | `lambda` | [0, 10] | `1.5` |
 | Run seed | `runSeed` | integer | `222` |
@@ -40,7 +40,7 @@ All experiment parameters are driven by **solver.config** (and optionally `-Dcon
 
 3. Outputs appear in **outputDirectory** (default `output_dir/`):  
    - **MECSattimestep.txt**, **RPLSattimestep.txt** — one value per timestep (energy, packet loss).  
-   - **gamma.txt**, **surpriseCC.txt**, **surpriseMIS.txt**, **surpriseBF.txt** — per mote/timestep.  
+   - **gamma.txt**, **surpriseCC.txt**, **surpriseMIP.txt**, **surpriseBF.txt** — per mote/timestep.  
    - **SelectedAction.txt**, **MECSatProb.txt**, **RPLSatProb.txt**, etc.
    - **state_transitions.txt** — per-mote, per-timestep log of `preState action postState b0..b3`.
      Used by `plotStateTransitions.py` to generate animated state-transition diagrams.
@@ -58,7 +58,7 @@ All experiment parameters are driven by **solver.config** (and optionally `-Dcon
 
 1. **Factors**
    - **Algorithm:** Perseus, ERPerseus  
-   - **Surprise:** MIS, CC  
+   - **Surprise:** MIP, CC  
    - **p_c:** e.g. 0.25, 0.5, 0.75  
    - **λ:** e.g. 0, 1, 10 (for ERPerseus; Perseus as baseline with same list but λ ignored)
 
