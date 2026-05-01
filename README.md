@@ -30,6 +30,7 @@ Two algorithmic contributions are implemented:
 
 Experiments are conducted using the DeltaIoT discrete-event simulator under controlled link failures and progressively tightened NFR constraints. Results are averaged over three independent seeds (222, 223, 224) with 500 timesteps per run. See [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) for step-by-step instructions to reproduce all paper results.
 
+![DeltaIoT Abstracted Topology](docs/DeltaIoT-Abstraction.jpg)
 ---
 
 ## File and Folder Structure
