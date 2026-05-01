@@ -1,4 +1,4 @@
-# Entropy-Regularised Perseus with Mutual Information Progress for Self-Adaptive IoT Networks
+# Information-Driven Adaptation and Entropy-Regularised Planning under Non-Stationarity
 
 **Venue:** Submitted to ACSOS 2026 (under double-blind review)  
 
