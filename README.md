@@ -13,6 +13,7 @@
 - [Configuration (solver.config)](#configuration-srcsolverconfig)
 - [Main Output Files](#main-output-files)
 - [Generating Charts](#generating-charts)
+- [Reproducing Paper Figures](#reproducing-paper-figures)
 - [Troubleshooting](#troubleshooting)
 - [License and Citation](#license-and-citation)
 
@@ -247,6 +248,156 @@ Charts produced:
 
 ---
 
+## Reproducing Paper Figures
+
+This section gives the exact commands and configuration needed to reproduce **Figure 1** and **Figure 2** from the paper.
+
+---
+
+### Figure 1 — ERPerseus MEC/RPL time series
+
+Figure 1 shows the standardised value of surprise over 500 timesteps under MIP updating. The exact configuration used is reproduced below.
+
+**Step 1 — write `src/solver.config` with these values:**
+
+```ini
+outputDirectory=output_dir
+domainDirectory=domains
+
+algorithmType=erperseus
+lambda=0.1
+
+runSeed=222
+surpriseMeasureForGamma=MIS
+p_c=0.25
+useSurpriseUpdating=true
+lookback=5
+
+mecThreshold=17.0
+rplThreshold=0.17
+
+linkFailureTimestep=
+linkFailureLinks=
+linkRecoveryTimestep=
+
+valueFunctionTolerance=0.000001
+timeLimit=1000
+
+beliefSamplingRuns=10
+beliefSamplingSteps=200
+
+dumpPolicyGraph=false
+dumpActionLabels=true
+```
+
+**Step 2 — compile (if not already done):**
+
+```bash
+# Linux/Mac
+javac -cp "libraries/*" -d bin -sourcepath src \
+  src/main/*.java src/pomdp/*.java src/solver/*.java src/iot/*.java
+```
+
+**Step 3 — run the solver:**
+
+```bash
+# Linux/Mac
+java -cp ".:bin:libraries/*" main.SolvePOMDP
+
+# Windows Command Prompt
+java -cp ".;bin;libraries\*" main.SolvePOMDP
+```
+
+Charts are generated automatically on completion (lots of other useful charts will also be provided once simulation ends). To regenerate them manually from the output files:
+
+```bash
+python createCharts.py \
+  --output-dir output_dir \
+  --mec-threshold 17.0 \
+  --rpl-threshold 0.17
+```
+
+The plots in `output_dir/` correspond to Figure 1.
+
+---
+
+### Figure 2 — ERPerseus vs Perseus comparison
+
+Figure 2 compares ERPerseus and baseline Perseus under identical conditions. The seeds for the two compared runs are stored in `output_dir/compare/` (`erperseus.config` and `perseus.config`) and their outputs in `output_dir/compare/erperseus/` and `output_dir/compare/perseus/`. The output animation figures are under `output_dir/compare/.../state_transitions`. View them in the browser using Live Server, or another appropriate html viwer.
+
+**Step 1 — run ERPerseus:**
+
+```bash
+# Linux/Mac
+java -DconfigPath=output_dir/compare/erperseus.config \
+     -cp ".:bin:libraries/*" main.SolvePOMDP
+
+# Windows Command Prompt
+java -DconfigPath=output_dir\compare\erperseus.config \
+     -cp ".;bin;libraries\*" main.SolvePOMDP
+```
+
+Key settings in `output_dir/compare/erperseus.config`:
+
+| Parameter | Value |
+|-----------|-------|
+| `algorithmType` | `erperseus` |
+| `lambda` | `1.0` |
+| `runSeed` | `222` |
+| `surpriseMeasureForGamma` | `MIS` |
+| `useSurpriseUpdating` | `true` |
+| `p_c` | `0.5` |
+| `lookback` | `4` |
+| `mecThreshold` | `20` |
+| `rplThreshold` | `0.2` |
+
+**Step 2 — run Perseus (baseline):**
+
+```bash
+# Linux/Mac
+java -DconfigPath=output_dir/compare/perseus.config \
+     -cp ".:bin:libraries/*" main.SolvePOMDP
+
+# Windows Command Prompt
+java -DconfigPath=output_dir\compare\perseus.config \
+     -cp ".;bin;libraries\*" main.SolvePOMDP
+```
+
+The Perseus config is identical except `algorithmType=perseus`.
+
+**Step 3 — generate charts for each run:**
+
+```bash
+python createCharts.py \
+  --output-dir output_dir/compare/erperseus \
+  --mec-threshold 20 \
+  --rpl-threshold 0.2
+
+python createCharts.py \
+  --output-dir output_dir/compare/perseus \
+  --mec-threshold 20 \
+  --rpl-threshold 0.2
+```
+
+Place the two resulting MEC/RPL plots side by side to reproduce Figure 2. The pre-computed outputs from our runs are already present in `output_dir/compare/erperseus/` and `output_dir/compare/perseus/` for direct comparison without re-running.
+
+---
+
+### Substituting your own method
+
+To compare an alternative algorithm against either figure, produce `MECSattimestep.txt` and `RPLSattimestep.txt` files in the two-column `timestep value` format used by the solver (see [Main Output Files](#main-output-files)), place them in a directory of your choice, and run:
+
+```bash
+python createCharts.py \
+  --output-dir <your-output-dir> \
+  --mec-threshold <threshold> \
+  --rpl-threshold <threshold>
+```
+
+Use the same threshold values as the figure you are comparing against (17.0 / 0.17 for Figure 1; 20 / 0.2 for Figure 2) so the threshold lines align.
+
+---
+
 ## Troubleshooting
 
 **`solver.config` or `domains/IoT.POMDP` not found**  
@@ -264,6 +415,8 @@ Activate the venv and run `pip install -r requirements.txt`. Then run `createCha
 **Bash: classpath with semicolons**  
 On Git Bash or other Unix shells, always quote the classpath: `-cp ".;bin;libraries/*"`.
 
+
+Sometimes, but rarely, some of the graphs produced post run don't display, and result in a localhost error. If this is the case, just re-run the experiment and the next batch of results should output fine.
 ---
 
 ## License
